@@ -14,8 +14,6 @@ CREATE TABLE IF NOT EXISTS tracker (
 )
 ''')
 conn.commit()
-
-# --- FUNCTIONS ---
 def add_entry():
     date = date_entry.get()
     habit = habit_entry.get()
