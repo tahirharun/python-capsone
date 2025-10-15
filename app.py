@@ -2,8 +2,6 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import sqlite3
 from datetime import datetime
-
-# --- DATABASE SETUP ---
 conn = sqlite3.connect("habit_mood.db")
 c = conn.cursor()
 
@@ -35,12 +33,10 @@ def add_entry():
 
 def load_entries():
     for row in tree.get_children():
-        tree.delete(row)
-    
+        tree.delete(row)   
     c.execute("SELECT * FROM tracker ORDER BY date DESC")
     for row in c.fetchall():
         tree.insert("", tk.END, values=row)
-
 def clear_fields():
     date_entry.delete(0, tk.END)
     date_entry.insert(0, datetime.today().strftime('%Y-%m-%d'))
