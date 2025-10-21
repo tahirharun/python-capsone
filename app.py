@@ -3,10 +3,10 @@ from tkinter import messagebox, ttk
 import sqlite3
 from datetime import datetime
 
+# ------------------ Database Setup ------------------
 conn = sqlite3.connect("habit_mood.db")
 c = conn.cursor()
 
-# Users Table
 c.execute('''
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,8 +48,13 @@ CREATE TABLE IF NOT EXISTS mood (
 ''')
 conn.commit()
 
+# ------------------ Global Variables ------------------
 current_user = None
+
+# ------------------ Functions ------------------
 def register_user():
+    """Register a new user and redirect to main dashboard automatically"""
+    global current_user
     username = reg_username.get().strip()
     password = reg_password.get().strip()
     if not username or not password:
@@ -58,13 +63,21 @@ def register_user():
     try:
         c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
         conn.commit()
-        messagebox.showinfo("Success", "Registration successful! You can now log in.")
+        c.execute("SELECT user_id FROM users WHERE username=?", (username,))
+        current_user = c.fetchone()[0]  # Auto login
+        messagebox.showinfo("Success", f"Registration successful! Welcome {username}!")
         reg_username.delete(0, tk.END)
         reg_password.delete(0, tk.END)
+        login_frame.pack_forget()
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        load_habits()
+        load_moods()
+        update_dashboard()
     except sqlite3.IntegrityError:
         messagebox.showerror("Error", "Username already exists!")
 
 def login_user():
+    """Login existing user"""
     global current_user
     username = login_username.get().strip()
     password = login_password.get().strip()
@@ -80,6 +93,15 @@ def login_user():
         update_dashboard()
     else:
         messagebox.showerror("Error", "Invalid username or password!")
+
+def logout_user():
+    """Logout current user and return to login/register screen"""
+    global current_user
+    current_user = None
+    main_frame.pack_forget()
+    login_frame.pack(pady=10)
+    login_username.delete(0, tk.END)
+    login_password.delete(0, tk.END)
 
 def add_habit():
     name = habit_name.get().strip()
@@ -144,14 +166,16 @@ def update_dashboard():
     done_today = c.fetchone()[0]
     dashboard_label.config(text=f"Total Habits: {total_habits} | Completed Today: {done_today}")
 
+# ------------------ GUI Setup ------------------
 root = tk.Tk()
 root.title("Habit & Mood Tracker")
 root.geometry("750x600")
 
+# ----- Login/Register Frame -----
 login_frame = tk.Frame(root)
 login_frame.pack(pady=10)
 
-tk.Label(login_frame, text="Login Username:").grid(row=0, column=0)
+tk.Label(login_frame, text="Username:").grid(row=0, column=0)
 login_username = tk.Entry(login_frame)
 login_username.grid(row=0, column=1)
 
@@ -161,9 +185,9 @@ login_password.grid(row=1, column=1)
 
 tk.Button(login_frame, text="Login", command=login_user).grid(row=2, column=0, columnspan=2, pady=5)
 
-tk.Label(login_frame, text="If you don't have an account, register below:").grid(row=3, column=0, columnspan=2, pady=5)
+tk.Label(login_frame, text="Don't have an account? Register below:").grid(row=3, column=0, columnspan=2, pady=5)
 
-tk.Label(login_frame, text="Register Username:").grid(row=4, column=0)
+tk.Label(login_frame, text="Username:").grid(row=4, column=0)
 reg_username = tk.Entry(login_frame)
 reg_username.grid(row=4, column=1)
 
@@ -173,8 +197,11 @@ reg_password.grid(row=5, column=1)
 
 tk.Button(login_frame, text="Register", command=register_user).grid(row=6, column=0, columnspan=2, pady=5)
 
-# Main Frame
+# ----- Main Dashboard Frame -----
 main_frame = tk.Frame(root)
+
+# Logout Button
+tk.Button(main_frame, text="Logout", command=logout_user).pack(pady=5)
 
 # Habit Section
 habit_frame = tk.LabelFrame(main_frame, text="Habits")
@@ -196,6 +223,7 @@ for col in ("ID","Habit","Freq"):
     habit_tree.heading(col, text=col)
 habit_tree.pack(fill=tk.X, padx=10, pady=5)
 
+# Mood Section
 mood_frame = tk.LabelFrame(main_frame, text="Mood")
 mood_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -209,6 +237,8 @@ mood_tree = ttk.Treeview(main_frame, columns=("Date","Mood","Notes"), show="head
 for col in ("Date","Mood","Notes"):
     mood_tree.heading(col, text=col)
 mood_tree.pack(fill=tk.X, padx=10, pady=5)
+
 dashboard_label = tk.Label(main_frame, text="Dashboard")
 dashboard_label.pack(pady=10)
+
 root.mainloop()
