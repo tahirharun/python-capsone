@@ -3,7 +3,6 @@ from tkinter import messagebox, ttk
 import sqlite3
 from datetime import datetime
 
-# ------------------ Database Setup ------------------
 conn = sqlite3.connect("habit_mood.db")
 c = conn.cursor()
 
@@ -48,10 +47,8 @@ CREATE TABLE IF NOT EXISTS mood (
 ''')
 conn.commit()
 
-# ------------------ Global Variables ------------------
 current_user = None
 
-# ------------------ Functions ------------------
 def register_user():
     """Register a new user and redirect to main dashboard automatically"""
     global current_user
@@ -166,12 +163,9 @@ def update_dashboard():
     done_today = c.fetchone()[0]
     dashboard_label.config(text=f"Total Habits: {total_habits} | Completed Today: {done_today}")
 
-# ------------------ GUI Setup ------------------
 root = tk.Tk()
 root.title("Habit & Mood Tracker")
 root.geometry("750x600")
-
-# ----- Login/Register Frame -----
 login_frame = tk.Frame(root)
 login_frame.pack(pady=10)
 
@@ -197,7 +191,6 @@ reg_password.grid(row=5, column=1)
 
 tk.Button(login_frame, text="Register", command=register_user).grid(row=6, column=0, columnspan=2, pady=5)
 
-# ----- Main Dashboard Frame -----
 main_frame = tk.Frame(root)
 
 # Logout Button
@@ -223,7 +216,7 @@ for col in ("ID","Habit","Freq"):
     habit_tree.heading(col, text=col)
 habit_tree.pack(fill=tk.X, padx=10, pady=5)
 
-# Mood Section
+
 mood_frame = tk.LabelFrame(main_frame, text="Mood")
 mood_frame.pack(fill=tk.X, padx=10, pady=5)
 
