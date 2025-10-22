@@ -50,7 +50,6 @@ conn.commit()
 current_user = None
 
 def register_user():
-    """Register a new user and redirect to main dashboard automatically"""
     global current_user
     username = reg_username.get().strip()
     password = reg_password.get().strip()
@@ -61,7 +60,7 @@ def register_user():
         c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
         conn.commit()
         c.execute("SELECT user_id FROM users WHERE username=?", (username,))
-        current_user = c.fetchone()[0]  # Auto login
+        current_user = c.fetchone()[0]
         messagebox.showinfo("Success", f"Registration successful! Welcome {username}!")
         reg_username.delete(0, tk.END)
         reg_password.delete(0, tk.END)
@@ -74,7 +73,6 @@ def register_user():
         messagebox.showerror("Error", "Username already exists!")
 
 def login_user():
-    """Login existing user"""
     global current_user
     username = login_username.get().strip()
     password = login_password.get().strip()
@@ -92,7 +90,6 @@ def login_user():
         messagebox.showerror("Error", "Invalid username or password!")
 
 def logout_user():
-    """Logout current user and return to login/register screen"""
     global current_user
     current_user = None
     main_frame.pack_forget()
@@ -132,6 +129,47 @@ def mark_done():
     conn.commit()
     update_dashboard()
 
+def edit_habit():
+    selected = habit_tree.selection()
+    if not selected:
+        messagebox.showwarning("Selection Error", "Select a habit to edit!")
+        return
+    habit_id, name, freq = habit_tree.item(selected[0])['values']
+    
+    habit_name.delete(0, tk.END)
+    habit_name.insert(0, name)
+    habit_freq.delete(0, tk.END)
+    habit_freq.insert(0, freq)
+    
+    def save_changes():
+        new_name = habit_name.get().strip()
+        new_freq = habit_freq.get().strip()
+        if not new_name or not new_freq.isdigit():
+            messagebox.showwarning("Input Error", "Enter valid habit name and frequency!")
+            return
+        c.execute("UPDATE habits SET habit_name=?, frequency=? WHERE habit_id=?",
+                  (new_name, int(new_freq), habit_id))
+        conn.commit()
+        habit_name.delete(0, tk.END)
+        habit_freq.delete(0, tk.END)
+        load_habits()
+        update_dashboard()
+        edit_habit_btn.config(text="Edit Habit", command=edit_habit)
+    edit_habit_btn.config(text="Save Changes", command=save_changes)
+
+def delete_habit():
+    selected = habit_tree.selection()
+    if not selected:
+        messagebox.showwarning("Selection Error", "Select a habit to delete!")
+        return
+    habit_id = habit_tree.item(selected[0])['values'][0]
+    if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this habit?"):
+        c.execute("DELETE FROM habits WHERE habit_id=?", (habit_id,))
+        c.execute("DELETE FROM habit_tracker WHERE habit_id=?", (habit_id,))
+        conn.commit()
+        load_habits()
+        update_dashboard()
+
 def add_mood():
     mood = mood_combobox.get()
     notes = mood_notes.get().strip()
@@ -153,6 +191,44 @@ def load_moods():
     for row in c.fetchall():
         mood_tree.insert("", tk.END, values=row)
 
+def edit_mood():
+    selected = mood_tree.selection()
+    if not selected:
+        messagebox.showwarning("Selection Error", "Select a mood to edit!")
+        return
+    date, mood, notes = mood_tree.item(selected[0])['values']
+    
+    mood_combobox.set(mood)
+    mood_notes.delete(0, tk.END)
+    mood_notes.insert(0, notes)
+    
+    def save_changes():
+        new_mood = mood_combobox.get()
+        new_notes = mood_notes.get().strip()
+        if not new_mood:
+            messagebox.showwarning("Input Error", "Select a mood!")
+            return
+        c.execute("UPDATE mood SET mood=?, notes=? WHERE user_id=? AND date=?",
+                  (new_mood, new_notes, current_user, date))
+        conn.commit()
+        mood_notes.delete(0, tk.END)
+        load_moods()
+        update_dashboard()
+        edit_mood_btn.config(text="Edit Mood", command=edit_mood)
+    edit_mood_btn.config(text="Save Changes", command=save_changes)
+
+def delete_mood():
+    selected = mood_tree.selection()
+    if not selected:
+        messagebox.showwarning("Selection Error", "Select a mood to delete!")
+        return
+    date = mood_tree.item(selected[0])['values'][0]
+    if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this mood entry?"):
+        c.execute("DELETE FROM mood WHERE user_id=? AND date=?", (current_user, date))
+        conn.commit()
+        load_moods()
+        update_dashboard()
+
 def update_dashboard():
     c.execute("SELECT COUNT(*) FROM habits WHERE user_id=?", (current_user,))
     total_habits = c.fetchone()[0]
@@ -165,7 +241,8 @@ def update_dashboard():
 
 root = tk.Tk()
 root.title("Habit & Mood Tracker")
-root.geometry("750x600")
+root.geometry("800x600")
+
 login_frame = tk.Frame(root)
 login_frame.pack(pady=10)
 
@@ -178,7 +255,6 @@ login_password = tk.Entry(login_frame, show="*")
 login_password.grid(row=1, column=1)
 
 tk.Button(login_frame, text="Login", command=login_user).grid(row=2, column=0, columnspan=2, pady=5)
-
 tk.Label(login_frame, text="Don't have an account? Register below:").grid(row=3, column=0, columnspan=2, pady=5)
 
 tk.Label(login_frame, text="Username:").grid(row=4, column=0)
@@ -192,11 +268,8 @@ reg_password.grid(row=5, column=1)
 tk.Button(login_frame, text="Register", command=register_user).grid(row=6, column=0, columnspan=2, pady=5)
 
 main_frame = tk.Frame(root)
-
-# Logout Button
 tk.Button(main_frame, text="Logout", command=logout_user).pack(pady=5)
 
-# Habit Section
 habit_frame = tk.LabelFrame(main_frame, text="Habits")
 habit_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -211,11 +284,15 @@ habit_freq.grid(row=0, column=3)
 tk.Button(habit_frame, text="Add Habit", command=add_habit).grid(row=0, column=4, padx=5)
 tk.Button(habit_frame, text="Mark Done Today", command=mark_done).grid(row=0, column=5, padx=5)
 
+edit_habit_btn = tk.Button(habit_frame, text="Edit Habit", command=edit_habit)
+edit_habit_btn.grid(row=0, column=6, padx=5)
+
+tk.Button(habit_frame, text="Delete Habit", command=delete_habit).grid(row=0, column=7, padx=5)
+
 habit_tree = ttk.Treeview(main_frame, columns=("ID","Habit","Freq"), show="headings")
 for col in ("ID","Habit","Freq"):
     habit_tree.heading(col, text=col)
 habit_tree.pack(fill=tk.X, padx=10, pady=5)
-
 
 mood_frame = tk.LabelFrame(main_frame, text="Mood")
 mood_frame.pack(fill=tk.X, padx=10, pady=5)
@@ -224,7 +301,13 @@ mood_combobox = ttk.Combobox(mood_frame, values=["Happy","Sad","Neutral","Excite
 mood_combobox.grid(row=0, column=0, padx=5)
 mood_notes = tk.Entry(mood_frame)
 mood_notes.grid(row=0, column=1, padx=5)
+
 tk.Button(mood_frame, text="Add Mood", command=add_mood).grid(row=0, column=2, padx=5)
+
+edit_mood_btn = tk.Button(mood_frame, text="Edit Mood", command=edit_mood)
+edit_mood_btn.grid(row=0, column=3, padx=5)
+
+tk.Button(mood_frame, text="Delete Mood", command=delete_mood).grid(row=0, column=4, padx=5)
 
 mood_tree = ttk.Treeview(main_frame, columns=("Date","Mood","Notes"), show="headings")
 for col in ("Date","Mood","Notes"):
