@@ -3,7 +3,6 @@ from tkinter import messagebox, ttk
 import sqlite3
 from datetime import datetime
 
-# --- Database Setup ---
 conn = sqlite3.connect("habit_mood.db")
 c = conn.cursor()
 
@@ -50,7 +49,6 @@ conn.commit()
 
 current_user = None
 
-# --- User Authentication ---
 def register_user():
     global current_user
     username = reg_username.get().strip()
@@ -99,7 +97,6 @@ def logout_user():
     login_username.delete(0, tk.END)
     login_password.delete(0, tk.END)
 
-# --- Habit Management ---
 def add_habit():
     name = habit_name.get().strip()
     freq = habit_freq.get().strip()
@@ -120,7 +117,6 @@ def load_habits():
     c.execute("SELECT habit_id, habit_name, frequency FROM habits WHERE user_id=?", (current_user,))
     today = datetime.today().strftime('%Y-%m-%d')
     for habit_id, name, freq in c.fetchall():
-        # Check status for today
         c.execute("SELECT status FROM habit_tracker WHERE habit_id=? AND date=?", (habit_id, today))
         status = c.fetchone()
         status_text = "Done" if status and status[0] == 1 else "Not Done"
@@ -134,7 +130,6 @@ def mark_done():
     habit_id = habit_tree.item(selected[0])['values'][0]
     today = datetime.today().strftime('%Y-%m-%d')
     
-    # Toggle status
     c.execute("SELECT status FROM habit_tracker WHERE habit_id=? AND date=?", (habit_id, today))
     result = c.fetchone()
     if result:
@@ -189,7 +184,6 @@ def delete_habit():
         load_habits()
         update_dashboard()
 
-# --- Mood Management ---
 def add_mood():
     mood = mood_combobox.get()
     notes = mood_notes.get().strip()
@@ -250,7 +244,6 @@ def delete_mood():
         load_moods()
         update_dashboard()
 
-# --- Dashboard ---
 def update_dashboard():
     c.execute("SELECT COUNT(*) FROM habits WHERE user_id=?", (current_user,))
     total_habits = c.fetchone()[0]
@@ -261,12 +254,10 @@ def update_dashboard():
     done_today = c.fetchone()[0]
     dashboard_label.config(text=f"Total Habits: {total_habits} | Completed Today: {done_today}")
 
-# --- GUI ---
 root = tk.Tk()
 root.title("Habit & Mood Tracker")
 root.geometry("900x600")
 
-# Login Frame
 login_frame = tk.Frame(root)
 login_frame.pack(pady=10)
 
@@ -291,11 +282,9 @@ reg_password.grid(row=5, column=1)
 
 tk.Button(login_frame, text="Register", command=register_user).grid(row=6, column=0, columnspan=2, pady=5)
 
-# Main Frame
 main_frame = tk.Frame(root)
 tk.Button(main_frame, text="Logout", command=logout_user).pack(pady=5)
 
-# Habit Frame
 habit_frame = tk.LabelFrame(main_frame, text="Habits")
 habit_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -320,7 +309,6 @@ for col in ("ID","Habit","Freq","Status"):
     habit_tree.heading(col, text=col)
 habit_tree.pack(fill=tk.X, padx=10, pady=5)
 
-# Mood Frame
 mood_frame = tk.LabelFrame(main_frame, text="Mood")
 mood_frame.pack(fill=tk.X, padx=10, pady=5)
 
